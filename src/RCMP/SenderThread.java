@@ -9,11 +9,15 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Timer;
 
 public class SenderThread extends Thread {
+	private final static String ACK = "ACK";
+	private final static int TIMEOUT = 4000;
 	private DatagramSocket socket;
 	private final int MTU;
 	private int destinationPort;
@@ -22,6 +26,7 @@ public class SenderThread extends Thread {
 	private byte[] payload;
 	private List<byte[]> payloads;
 	private int remainderBytesNumber = 0;
+	private long time;
 	public SenderThread(String destinationAddress, int destinationPort, String filename, int MTU) throws SocketException, FileNotFoundException, IOException {
 		super();
 		setDestinationAddress(destinationAddress);
@@ -30,19 +35,22 @@ public class SenderThread extends Thread {
 		socket = new DatagramSocket();
 		socket.setReceiveBufferSize(MTU);
 		socket.setSendBufferSize(MTU);
+		socket.setSoTimeout(TIMEOUT);
 		payloads = new ArrayList<byte[]>();
 		remainderBytesNumber = readAllBytesIntoPayloadQueue(filename);
 		//stream.readNBytes(arg0)
 //		if(payload.equals(payload2)) {
 //			System.out.println("Same!");
 //		}
+		time = 0;
 	}
 	
 	// Logic center for Sender
 	public void run() {
 		// Send Normal Length Packets
-		try {
-			for(int i = 0; i < payloads.size(); i++) {
+		for(int i = 0; i < payloads.size(); i++) {
+			try {
+	
 				byte[] buffer = payloads.get(i);
 				DatagramPacket packet = createPacket(buffer);
 				if(i == payloads.size() - 1) {
@@ -50,9 +58,27 @@ public class SenderThread extends Thread {
 				}
 				socket.send(packet);
 				System.out.println("Sending Packet #" + i + " of size " + packet.getLength());
+				byte[] ackBuffer = new byte[3]; // One byte per character
+				DatagramPacket ackPacket = createPacket(ackBuffer);
+				time = System.currentTimeMillis();
+				socket.receive(ackPacket);
+				String ack = new String(ackBuffer);
+				if(!ack.equals(ACK)) {
+					System.out.println("ACK Corrupted");
+					System.out.println("Need 'ACK' not " + ack);
+				} else {
+					System.out.println("ACK Received!!!");
+				}
+					
+				
+			} catch(SocketTimeoutException e) {
+				long waitTime = System.currentTimeMillis() - time;
+				System.out.println("Waited: " + waitTime);
+				System.out.println("TImeout reached. Resending last packet...");
+				i--;
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
 		}
 		
 	}

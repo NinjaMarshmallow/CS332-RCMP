@@ -27,18 +27,19 @@ public class ReceiverThread extends Thread {
 	public void run() {
 		try {
 			while(true) {
-				
-			
 				byte[] buffer = new byte[MTU];
 				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-				
-				
 				socket.receive(packet);
 				System.out.println("Packet Received");
 				System.out.println("Packet has size of " + packet.getLength());
 				byte[] saveBuffer = packet.getData();
 				stream.write(saveBuffer);
 				System.out.println("Contents written");
+				byte[] ackBuffer = new String("ACK").getBytes(); // ACK
+				System.out.println("ACK Buffer is of length " + ackBuffer.length);
+				DatagramPacket ackPacket = new DatagramPacket(ackBuffer, ackBuffer.length, packet.getAddress(), packet.getPort());
+				socket.send(ackPacket);
+				System.out.println("ACK Packet Sent");
 				if(packet.getLength() < MTU) {
 					break;
 				}
