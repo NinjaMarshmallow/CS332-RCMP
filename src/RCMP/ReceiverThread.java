@@ -1,6 +1,6 @@
 package RCMP;
-import java.io.BufferedWriter;
-import java.io.FileWriter;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -13,38 +13,41 @@ public class ReceiverThread extends Thread {
 	private final int MTU;
 	
 	private DatagramSocket socket;
-	private BufferedWriter writer;
+	private FileOutputStream stream;
 	public ReceiverThread(int port, String filename, int MTU) throws SocketException, IOException {
 		super();
 		this.MTU = MTU;
 		socket = new DatagramSocket(port);
 		socket.setReceiveBufferSize(MTU);
 		socket.setSendBufferSize(MTU);
-		writer = new BufferedWriter(new FileWriter(filename));
+		stream = new FileOutputStream(new File(filename));
 		
 	}
 	// Logic center for Receiver
 	public void run() {
-		byte[] buf = new byte[MTU];
-		DatagramPacket packet = new DatagramPacket(buf, buf.length);
-		
 		try {
-			socket.receive(packet);
-			System.out.println("Packet Received");
-			String contents = getPayload(packet);
-			System.out.println("Getting Contents: " + contents);
-			writer.write(contents);
-			System.out.println("Contents written");
-			writer.close();
-			//DatagramPacket sendPacket = new DatagramPacket(payload, payload.length, packet.getAddress(), packet.getPort());
-			//socket.send(sendPacket);
+			while(true) {
+				
+			
+				byte[] buffer = new byte[MTU];
+				DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+				
+				
+				socket.receive(packet);
+				System.out.println("Packet Received");
+				System.out.println("Packet has size of " + packet.getLength());
+				byte[] saveBuffer = packet.getData();
+				stream.write(saveBuffer);
+				System.out.println("Contents written");
+				if(packet.getLength() < MTU) {
+					break;
+				}
+				
+			}
+			stream.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 		socket.close();
-	}
-	
-	private String getPayload(DatagramPacket packet) {
-		return new String(packet.getData());
 	}
 }

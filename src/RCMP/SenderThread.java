@@ -96,6 +96,7 @@ public class SenderThread extends Thread {
 			}
 			payloads.add(buffer);
 		}
+		stream.close();
 		return remainder;
 	}
 	
@@ -111,7 +112,6 @@ public class SenderThread extends Thread {
 				break;
 			}
 		}
-		
 		return total.getBytes();
 	}
 }
