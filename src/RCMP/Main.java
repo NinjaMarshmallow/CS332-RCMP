@@ -17,7 +17,8 @@ import java.net.SocketException;
 
 public class Main {
 	
-	private final static int MTU = 1450;
+	public final static int MTU = 1450;
+	public final static int HEADER_SIZE = 12;
 	
 	private enum HostType {
 		SENDER, RECEIVER, NONE
@@ -26,7 +27,7 @@ public class Main {
 	// Start Receiver in a new thread
 	private void startReceiever(String receiverPort, String filename){
 		try {
-			new ReceiverThread(Integer.parseInt(receiverPort), filename, MTU).start();
+			new ReceiverThread(Integer.parseInt(receiverPort), filename).start();
 		} catch (SocketException e) {
 			e.printStackTrace();
 		} catch (FileNotFoundException e) {
@@ -39,7 +40,7 @@ public class Main {
 	// Start Sender in a new thread
 	private void startSender(String receiverAddress, String receiverPort, String filename) {
 		try {
-			new SenderThread(receiverAddress, Integer.parseInt(receiverPort), filename, MTU).start();
+			new SenderThread(receiverAddress, Integer.parseInt(receiverPort), filename).start();
 		} catch (SocketException e) {
 			e.printStackTrace();
 		} catch (IOException e) {

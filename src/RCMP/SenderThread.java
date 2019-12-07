@@ -11,15 +11,18 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
+import java.util.Random;
 
 public class SenderThread extends Thread {
+	
 	private final static String ACK = "ACK";
+	private final int MTU = Main.MTU;
+	private final int HEADER_SIZE = Main.HEADER_SIZE;
 	private final static int TIMEOUT = 4000;
 	private DatagramSocket socket;
-	private final int MTU;
 	private int destinationPort;
 	private InetAddress destinationAddress;
 	private BufferedReader reader;
@@ -27,22 +30,21 @@ public class SenderThread extends Thread {
 	private List<byte[]> payloads;
 	private int remainderBytesNumber = 0;
 	private long time;
-	public SenderThread(String destinationAddress, int destinationPort, String filename, int MTU) throws SocketException, FileNotFoundException, IOException {
+	private int fileSize;
+	private int connectionID;
+	
+	public SenderThread(String destinationAddress, int destinationPort, String filename) throws SocketException, FileNotFoundException, IOException {
 		super();
 		setDestinationAddress(destinationAddress);
 		setDestinationPort(destinationPort);
-		this.MTU = MTU;
 		socket = new DatagramSocket();
-		socket.setReceiveBufferSize(MTU);
-		socket.setSendBufferSize(MTU);
+		socket.setReceiveBufferSize(HEADER_SIZE + MTU);
+		socket.setSendBufferSize(HEADER_SIZE + MTU);
 		socket.setSoTimeout(TIMEOUT);
 		payloads = new ArrayList<byte[]>();
 		remainderBytesNumber = readAllBytesIntoPayloadQueue(filename);
-		//stream.readNBytes(arg0)
-//		if(payload.equals(payload2)) {
-//			System.out.println("Same!");
-//		}
-		time = 0;
+		fileSize = payloads.size() * MTU + remainderBytesNumber;
+		connectionID = new Random().nextInt((int)Math.pow(2, 16));
 	}
 	
 	// Logic center for Sender
@@ -50,44 +52,58 @@ public class SenderThread extends Thread {
 		// Send Normal Length Packets
 		for(int i = 0; i < payloads.size(); i++) {
 			try {
-	
-				byte[] buffer = payloads.get(i);
-				DatagramPacket packet = createPacket(buffer);
-				if(i == payloads.size() - 1) {
-					packet.setLength(this.remainderBytesNumber);
-				}
-				socket.send(packet);
-				System.out.println("Sending Packet #" + i + " of size " + packet.getLength());
-				byte[] ackBuffer = new byte[3]; // One byte per character
-				DatagramPacket ackPacket = createPacket(ackBuffer);
-				time = System.currentTimeMillis();
-				socket.receive(ackPacket);
-				String ack = new String(ackBuffer);
-				if(!ack.equals(ACK)) {
-					System.out.println("ACK Corrupted");
-					System.out.println("Need 'ACK' not " + ack);
-				} else {
-					System.out.println("ACK Received!!!");
-				}
-					
-				
+				sendPacket(i);
+				receiveACK();
 			} catch(SocketTimeoutException e) {
-				long waitTime = System.currentTimeMillis() - time;
-				System.out.println("Waited: " + waitTime);
 				System.out.println("TImeout reached. Resending last packet...");
-				i--;
+				i--; // Go back a step to resend dropped packet
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
+		socket.close();
+		System.out.println("File transfer complete");
 		
+	}
+	
+	private void sendPacket(int packetNumber) throws IOException {
+		byte[] buffer = payloads.get(packetNumber);
+		byte[] header = createHeader(packetNumber);
+		byte[] fullPacketBuffer = ByteBuffer.allocate(HEADER_SIZE + MTU).put(header).put(buffer).array();
+		DatagramPacket packet = createPacket(fullPacketBuffer);
+		if(packetNumber == payloads.size() - 1) {
+			packet.setLength(this.remainderBytesNumber);
+		}
+		socket.send(packet);
+		System.out.println("Sending Packet #" + packetNumber + " of size " + packet.getLength());
+		System.out.println("Packet contains: ");
+		displayPacket(packet);
+	}
+	
+	private void receiveACK() throws IOException {
+		byte[] ackBuffer = new byte[3]; // One byte per character
+		DatagramPacket ackPacket = createPacket(ackBuffer);
+		socket.receive(ackPacket);
+		String ack = new String(ackBuffer);
+		if(!ack.equals(ACK)) {
+			System.out.println("ACK Corrupted");
+			System.out.println("Need 'ACK' not " + ack);
+		} else {
+			System.out.println("ACK Received.");
+		}
+	}
+	
+	private byte[] createHeader(int packetNumber) {
+		byte[] bytesConnectionID = ByteBuffer.allocate(4).putInt(connectionID).array();
+		byte[] bytesFileSize = ByteBuffer.allocate(4).putInt(fileSize).array();
+		byte[] bytesPacketNumber = ByteBuffer.allocate(4).putInt(packetNumber).array();
+		return ByteBuffer.allocate(HEADER_SIZE).put(bytesConnectionID).put(bytesFileSize).put(bytesPacketNumber).array();
 	}
 	
 	private void displayPacket(DatagramPacket packet) {
 		String address = packet.getAddress().getCanonicalHostName();
 		byte[] payload = packet.getData();
 		String contents = new String(payload);
-		System.out.println("Message back from Server @ " + address + ":\n");
 		System.out.println(contents);
 	}
 	
@@ -124,20 +140,5 @@ public class SenderThread extends Thread {
 		}
 		stream.close();
 		return remainder;
-	}
-	
-	private byte[] calculateBytes(BufferedReader reader) throws IOException {
-		String total = "";
-		String line = reader.readLine();
-		while(true) {
-			total += line;
-			line = reader.readLine();
-			if(line != null) {
-				total += "\n";
-			} else {
-				break;
-			}
-		}
-		return total.getBytes();
 	}
 }
