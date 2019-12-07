@@ -18,6 +18,7 @@ public class ReceiverThread extends Thread {
 	
 	private DatagramSocket socket;
 	private FileOutputStream stream;
+	private int totalBytesReceived;
 	
 	class PacketHeader {
 		public int connectionID, fileSize, packetNumber; 
@@ -34,6 +35,7 @@ public class ReceiverThread extends Thread {
 		socket.setReceiveBufferSize(MTU + HEADER_SIZE);
 		socket.setSendBufferSize(MTU + HEADER_SIZE);
 		stream = new FileOutputStream(new File(filename));
+		totalBytesReceived = 0;
 		
 	}
 	// Logic center for Receiver
@@ -41,9 +43,14 @@ public class ReceiverThread extends Thread {
 		try {
 			while(true) {
 				DatagramPacket packet = receivePacket();
+				PacketHeader header = extractHeaderInfo(packet);
+				displayHeader(header, packet);
+				totalBytesReceived += packet.getLength() - HEADER_SIZE;
 				writePacketToFile(packet);
 				sendACK(packet.getAddress(), packet.getPort());
+				System.out.println("Bytes Received: " + totalBytesReceived + " Bytes to go: " + header.fileSize);
 				if(packet.getLength() < MTU + HEADER_SIZE) {
+					System.out.println("Packet has been received in Full.");
 					break;
 				}
 			}
@@ -58,9 +65,6 @@ public class ReceiverThread extends Thread {
 		byte[] buffer = new byte[MTU + HEADER_SIZE];
 		DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
 		socket.receive(packet);
-		PacketHeader header = extractHeaderInfo(packet);
-		System.out.println("Packet #" + header.packetNumber + " Received from connection " + header.connectionID);
-		System.out.println("The total file size is " + header.fileSize + " with packet size of " + packet.getLength());
 		return packet;
 	}
 	
@@ -95,5 +99,10 @@ public class ReceiverThread extends Thread {
 		DatagramPacket ackPacket = new DatagramPacket(ackBuffer, ackBuffer.length, address, port);
 		socket.send(ackPacket);
 		System.out.println("ACK Packet Sent");
+	}
+	
+	private void displayHeader(PacketHeader header, DatagramPacket packet) {
+		System.out.println("Packet #" + header.packetNumber + " Received from connection " + header.connectionID);
+		System.out.println("The total file size is " + header.fileSize + " with packet size of " + packet.getLength());
 	}
 }
