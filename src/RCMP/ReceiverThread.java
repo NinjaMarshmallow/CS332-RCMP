@@ -33,7 +33,7 @@ public class ReceiverThread extends Thread {
 			System.out.println("Packet Received");
 			String contents = getPayload(packet);
 			System.out.println("Getting Contents: " + contents);
-			writer.append(contents);
+			writer.write(contents);
 			System.out.println("Contents written");
 			writer.close();
 			//DatagramPacket sendPacket = new DatagramPacket(payload, payload.length, packet.getAddress(), packet.getPort());
