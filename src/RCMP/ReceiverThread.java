@@ -48,8 +48,8 @@ public class ReceiverThread extends Thread {
 				totalBytesReceived += packet.getLength() - HEADER_SIZE;
 				writePacketToFile(packet);
 				sendACK(packet.getAddress(), packet.getPort());
-				System.out.println("Bytes Received: " + totalBytesReceived + " Bytes to go: " + header.fileSize);
-				if(packet.getLength() < MTU + HEADER_SIZE) {
+				System.out.println("Bytes Received: " + totalBytesReceived + " Bytes to go: " + (header.fileSize - totalBytesReceived));
+				if(totalBytesReceived == header.fileSize) {
 					System.out.println("Packet has been received in Full.");
 					break;
 				}

@@ -43,7 +43,7 @@ public class SenderThread extends Thread {
 		socket.setSoTimeout(TIMEOUT);
 		payloads = new ArrayList<byte[]>();
 		remainderBytesNumber = readAllBytesIntoPayloadQueue(filename);
-		fileSize = payloads.size() * MTU + remainderBytesNumber;
+		fileSize = (payloads.size() - 1) * MTU + remainderBytesNumber;
 		connectionID = new Random().nextInt((int)Math.pow(2, 16));
 	}
 	
@@ -72,7 +72,7 @@ public class SenderThread extends Thread {
 		byte[] fullPacketBuffer = ByteBuffer.allocate(HEADER_SIZE + MTU).put(header).put(buffer).array();
 		DatagramPacket packet = createPacket(fullPacketBuffer);
 		if(packetNumber == payloads.size() - 1) {
-			packet.setLength(this.remainderBytesNumber);
+			packet.setLength(this.remainderBytesNumber + HEADER_SIZE);
 		}
 		socket.send(packet);
 		System.out.println("Sending Packet #" + packetNumber + " of size " + packet.getLength());
