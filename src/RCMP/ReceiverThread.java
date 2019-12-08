@@ -41,13 +41,16 @@ public class ReceiverThread extends Thread {
 	// Logic center for Receiver
 	public void run() {
 		try {
+			int lastPacketReceived = -1;
 			while(true) {
 				DatagramPacket packet = receivePacket();
 				PacketHeader header = extractHeaderInfo(packet);
 				displayHeader(header, packet);
-				totalBytesReceived += packet.getLength() - HEADER_SIZE;
-				writePacketToFile(packet);
-				sendACK(packet.getAddress(), packet.getPort());
+				if(lastPacketReceived + 1 == header.packetNumber) {
+					lastPacketReceived++;
+					writePacketToFile(packet);
+				}
+				sendACK(packet.getAddress(), packet.getPort(), header.connectionID, lastPacketReceived);
 				System.out.println("Bytes Received: " + totalBytesReceived + " Bytes to go: " + (header.fileSize - totalBytesReceived));
 				if(totalBytesReceived == header.fileSize) {
 					System.out.println("Packet has been received in Full.");
@@ -92,10 +95,13 @@ public class ReceiverThread extends Thread {
 		byte[] headerAndPayload = packet.getData();
 		byte[] justPayload = Arrays.copyOfRange(headerAndPayload, 12, MTU + HEADER_SIZE);
 		stream.write(justPayload);
+		totalBytesReceived += packet.getLength() - HEADER_SIZE;
 	}
 	
-	private void sendACK(InetAddress address, int port) throws IOException {
-		byte[] ackBuffer = new String("ACK").getBytes(); // ACK
+	private void sendACK(InetAddress address, int port, int connectionID, int lastPacketReceived) throws IOException {
+		byte[] bytesID = ByteBuffer.allocate(4).putInt(connectionID).array();
+		byte[] bytesPacketNumber = ByteBuffer.allocate(4).putInt(lastPacketReceived).array();
+		byte[] ackBuffer = ByteBuffer.allocate(11).put(bytesID).put(bytesPacketNumber).array();
 		DatagramPacket ackPacket = new DatagramPacket(ackBuffer, ackBuffer.length, address, port);
 		socket.send(ackPacket);
 		System.out.println("ACK Packet Sent");

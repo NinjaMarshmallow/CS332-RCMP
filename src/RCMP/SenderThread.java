@@ -13,6 +13,7 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
@@ -81,16 +82,12 @@ public class SenderThread extends Thread {
 	}
 	
 	private void receiveACK() throws IOException {
-		byte[] ackBuffer = new byte[3]; // One byte per character
+		byte[] ackBuffer = new byte[8]; // One byte per character
 		DatagramPacket ackPacket = createPacket(ackBuffer);
 		socket.receive(ackPacket);
-		String ack = new String(ackBuffer);
-		if(!ack.equals(ACK)) {
-			System.out.println("ACK Corrupted");
-			System.out.println("Need 'ACK' not " + ack);
-		} else {
-			System.out.println("ACK Received.");
-		}
+		int connectID = ByteBuffer.wrap(ackBuffer).getInt();
+		int lastPacketReceived = ByteBuffer.wrap(ackBuffer).getInt();
+		System.out.println("Received ACK of Packet #" + lastPacketReceived + "on connection " + connectID);
 	}
 	
 	private byte[] createHeader(int packetNumber) {
