@@ -18,7 +18,11 @@ import java.net.SocketException;
 public class Main {
 	
 	public final static int MTU = 1450;
-	public final static int HEADER_SIZE = 12;
+	public final static int HEADER_SIZE = 13;
+	public final static int CONNECTION_ID_LENGTH = 4;
+	public final static int FILE_SIZE_LENGTH = 4;
+	public final static int PACKET_NUM_LENGTH = 4;
+	public final static int SHOULD_ACK_LENGTH = 1;
 	
 	private enum HostType {
 		SENDER, RECEIVER, NONE

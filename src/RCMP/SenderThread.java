@@ -1,6 +1,5 @@
 package RCMP;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -13,15 +12,19 @@ import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
 public class SenderThread extends Thread {
 	
-	private final int MTU = Main.MTU;
-	private final int HEADER_SIZE = Main.HEADER_SIZE;
-	private final static int TIMEOUT = 4000;
+	private final static int MTU = Main.MTU;
+	private final static int HEADER_SIZE = Main.HEADER_SIZE;
+	private final static int CONNECTION_ID_LENGTH = Main.CONNECTION_ID_LENGTH;
+	private final static int FILE_SIZE_LENGTH = Main.FILE_SIZE_LENGTH;
+	private final static int PACKET_NUM_LENGTH = Main.PACKET_NUM_LENGTH;
+	private final static int SHOULD_ACK_LENGTH = Main.SHOULD_ACK_LENGTH;
+	
+	private final static int TIMEOUT = 1000;
 	private DatagramSocket socket;
 	private int destinationPort;
 	private InetAddress destinationAddress;
@@ -58,7 +61,10 @@ public class SenderThread extends Thread {
 		for(int i = 0; i < payloads.size(); i++) {
 			try {
 				sendPacket(i);
-				receiveACK();
+				if(ackGap == gapCounter || i == payloads.size() - 1) {
+					receiveACK();
+				}
+				gapCounter++;
 			} catch(SocketTimeoutException e) {
 				System.out.println("TImeout reached. Resending last packet...");
 				i--; // Go back a step to resend dropped packet
@@ -80,28 +86,31 @@ public class SenderThread extends Thread {
 			packet.setLength(this.remainderBytesNumber + HEADER_SIZE);
 		}
 		socket.send(packet);
-		gapCounter++;
+		
 		System.out.println("Sending Packet #" + packetNumber + " of size " + packet.getLength());
 		System.out.println("Packet contains: ");
 		displayPacket(packet);
 	}
 	
 	private void receiveACK() throws IOException {
-		byte[] ackBuffer = new byte[8]; // One byte per character
+		byte[] ackBuffer = new byte[CONNECTION_ID_LENGTH + PACKET_NUM_LENGTH]; // One byte per character
 		DatagramPacket ackPacket = createPacket(ackBuffer);
 		socket.receive(ackPacket);
 		int connectID = ByteBuffer.wrap(ackBuffer).getInt();
 		int lastPacketReceived = ByteBuffer.wrap(ackBuffer).getInt();
 		ackGap++;
 		gapCounter = 0;
-		System.out.println("Received ACK of Packet #" + lastPacketReceived + "on connection " + connectID);
+		System.out.println("Received ACK of Packet #" + lastPacketReceived + " on connection " + connectID);
 	}
 	
 	private byte[] createHeader(int packetNumber) {
-		byte[] bytesConnectionID = ByteBuffer.allocate(4).putInt(connectionID).array();
-		byte[] bytesFileSize = ByteBuffer.allocate(4).putInt(fileSize).array();
-		byte[] bytesPacketNumber = ByteBuffer.allocate(4).putInt(packetNumber).array();
-		byte[] shouldBeAcked = ByteBuffer.allocate(1).putInt(ackGap == gapCounter ? 1 : 0).array();
+		byte[] bytesConnectionID = ByteBuffer.allocate(CONNECTION_ID_LENGTH).putInt(connectionID).array();
+		byte[] bytesFileSize = ByteBuffer.allocate(FILE_SIZE_LENGTH).putInt(fileSize).array();
+		byte[] bytesPacketNumber = ByteBuffer.allocate(PACKET_NUM_LENGTH).putInt(packetNumber).array();
+		boolean shouldAck = (ackGap == gapCounter || packetNumber == payloads.size() - 1);
+		byte ackByte = (byte) (shouldAck ? 1 : 0);
+		byte[] shouldBeAcked = ByteBuffer.allocate(SHOULD_ACK_LENGTH).put(ackByte).array();
+		System.out.println("AckByte: " + ackByte);
 		return ByteBuffer.allocate(HEADER_SIZE).put(bytesConnectionID).put(bytesFileSize).put(bytesPacketNumber).put(shouldBeAcked).array();
 	}
 	
