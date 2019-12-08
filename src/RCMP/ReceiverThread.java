@@ -73,21 +73,10 @@ public class ReceiverThread extends Thread {
 	
 	private PacketHeader extractHeaderInfo(DatagramPacket packet) {
 		byte[] wholeBuffer = packet.getData();
-		byte[] bytesConnectionID = new byte[4];
-		byte[] bytesFileSize = new byte[4];
-		byte[] bytesPacketNumber = new byte[4];
-		for(int i = 0; i < wholeBuffer.length; i++) {
-			if(i < 4) {
-				bytesConnectionID[i] = wholeBuffer[i];
-			} else if(i < 8) {
-				bytesFileSize[i - 4] = wholeBuffer[i];
-			} else if(i < 12) {
-				bytesPacketNumber[i - 8] = wholeBuffer[i];
-			}
-		}
-		int id = ByteBuffer.wrap(bytesConnectionID).getInt();
-		int fileSize = ByteBuffer.wrap(bytesFileSize).getInt();
-		int packetNumber = ByteBuffer.wrap(bytesPacketNumber).getInt();
+		ByteBuffer byteBuf = ByteBuffer.wrap(wholeBuffer);
+		int id = byteBuf.getInt();
+		int fileSize = byteBuf.getInt();
+		int packetNumber = byteBuf.getInt();
 		return new PacketHeader(id, fileSize, packetNumber);
 	}
 	

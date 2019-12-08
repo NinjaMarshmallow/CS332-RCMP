@@ -38,14 +38,18 @@ public class SenderThread extends Thread {
 		super();
 		setDestinationAddress(destinationAddress);
 		setDestinationPort(destinationPort);
-		socket = new DatagramSocket();
-		socket.setReceiveBufferSize(HEADER_SIZE + MTU);
-		socket.setSendBufferSize(HEADER_SIZE + MTU);
-		socket.setSoTimeout(TIMEOUT);
+		initializeSocket();
 		payloads = new ArrayList<byte[]>();
 		remainderBytesNumber = readAllBytesIntoPayloadQueue(filename);
 		fileSize = (payloads.size() - 1) * MTU + remainderBytesNumber;
 		connectionID = new Random().nextInt((int)Math.pow(2, 16));
+	}
+	
+	private void initializeSocket() throws SocketException {
+		socket = new DatagramSocket();
+		socket.setReceiveBufferSize(HEADER_SIZE + MTU);
+		socket.setSendBufferSize(HEADER_SIZE + MTU);
+		socket.setSoTimeout(TIMEOUT);
 	}
 	
 	// Logic center for Sender
@@ -85,8 +89,9 @@ public class SenderThread extends Thread {
 		byte[] ackBuffer = new byte[8]; // One byte per character
 		DatagramPacket ackPacket = createPacket(ackBuffer);
 		socket.receive(ackPacket);
-		int connectID = ByteBuffer.wrap(ackBuffer).getInt();
-		int lastPacketReceived = ByteBuffer.wrap(ackBuffer).getInt();
+		ByteBuffer byteBuf = ByteBuffer.wrap(ackBuffer);
+		int connectID = byteBuf.getInt(4);
+		int lastPacketReceived = byteBuf.getInt(4);
 		System.out.println("Received ACK of Packet #" + lastPacketReceived + "on connection " + connectID);
 	}
 	
