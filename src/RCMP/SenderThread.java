@@ -62,11 +62,12 @@ public class SenderThread extends Thread {
 			try {
 				sendPacket(i);
 				if(ackGap == gapCounter || i == payloads.size() - 1) {
-					receiveACK();
+					i = receiveACK();
+					System.out.println("Last Packet: " + i);
 				}
 				gapCounter++;
 			} catch(SocketTimeoutException e) {
-				System.out.println("TImeout reached. Resending last packet...");
+				System.out.println("Timeout reached. Resending last packet...");
 				i--; // Go back a step to resend dropped packet
 			} catch (IOException e) {
 				e.printStackTrace();
@@ -92,15 +93,17 @@ public class SenderThread extends Thread {
 		displayPacket(packet);
 	}
 	
-	private void receiveACK() throws IOException {
+	private int receiveACK() throws IOException {
 		byte[] ackBuffer = new byte[CONNECTION_ID_LENGTH + PACKET_NUM_LENGTH]; // One byte per character
 		DatagramPacket ackPacket = createPacket(ackBuffer);
 		socket.receive(ackPacket);
-		int connectID = ByteBuffer.wrap(ackBuffer).getInt();
-		int lastPacketReceived = ByteBuffer.wrap(ackBuffer).getInt();
+		ByteBuffer byteBuffer = ByteBuffer.wrap(ackBuffer);
+		int connectID = byteBuffer.getInt();
+		int lastPacketReceived = byteBuffer.getInt();
 		ackGap++;
 		gapCounter = 0;
 		System.out.println("Received ACK of Packet #" + lastPacketReceived + " on connection " + connectID);
+		return lastPacketReceived;
 	}
 	
 	private byte[] createHeader(int packetNumber) {
