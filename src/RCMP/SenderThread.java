@@ -34,6 +34,7 @@ public class SenderThread extends Thread {
 	private int connectionID;
 	private int ackGap;
 	private int gapCounter;
+	private int timeouts = 0;
 	
 	public SenderThread(String destinationAddress, int destinationPort, String filename) throws SocketException, FileNotFoundException, IOException {
 		super();
@@ -63,18 +64,27 @@ public class SenderThread extends Thread {
 				sendPacket(i);
 				if(ackGap == gapCounter || i == payloads.size() - 1) {
 					i = receiveACK();
+					timeouts = 0;
 					System.out.println("Last Packet: " + i);
 				}
 				gapCounter++;
 			} catch(SocketTimeoutException e) {
 				System.out.println("Timeout reached. Resending last packet...");
+				timeouts++;
+				if(timeouts >= 5) {
+					break;
+				}
 				i--; // Go back a step to resend dropped packet
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
 		socket.close();
-		System.out.println("File transfer complete");
+		if(timeouts >= 5) {
+			System.out.println("File transfer success unknown.");
+		} else {
+			System.out.println("File transfer complete");
+		}
 		
 	}
 	
@@ -118,7 +128,6 @@ public class SenderThread extends Thread {
 	}
 	
 	private void displayPacket(DatagramPacket packet) {
-		String address = packet.getAddress().getCanonicalHostName();
 		byte[] payload = packet.getData();
 		String contents = new String(payload);
 		System.out.println(contents);
