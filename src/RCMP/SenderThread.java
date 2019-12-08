@@ -102,7 +102,7 @@ public class SenderThread extends Thread {
 		byte[] bytesFileSize = ByteBuffer.allocate(4).putInt(fileSize).array();
 		byte[] bytesPacketNumber = ByteBuffer.allocate(4).putInt(packetNumber).array();
 		byte[] shouldBeAcked = ByteBuffer.allocate(1).putInt(ackGap == gapCounter ? 1 : 0).array();
-		return ByteBuffer.allocate(HEADER_SIZE).put(bytesConnectionID).put(bytesFileSize).put(bytesPacketNumber).array();
+		return ByteBuffer.allocate(HEADER_SIZE).put(bytesConnectionID).put(bytesFileSize).put(bytesPacketNumber).put(shouldBeAcked).array();
 	}
 	
 	private void displayPacket(DatagramPacket packet) {

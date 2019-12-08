@@ -21,11 +21,12 @@ public class ReceiverThread extends Thread {
 	private int totalBytesReceived;
 	
 	class PacketHeader {
-		public int connectionID, fileSize, packetNumber; 
-		PacketHeader(int connectionID, int fileSize, int packetNumber) {
+		public int connectionID, fileSize, packetNumber, shouldBeAcked; 
+		PacketHeader(int connectionID, int fileSize, int packetNumber, int shouldBeAcked) {
 			this.connectionID = connectionID;
 			this.fileSize = fileSize;
 			this.packetNumber = packetNumber;
+			this.shouldBeAcked = shouldBeAcked;
 		}
 	}
 	
@@ -50,7 +51,9 @@ public class ReceiverThread extends Thread {
 					lastPacketReceived++;
 					writePacketToFile(packet);
 				}
-				sendACK(packet.getAddress(), packet.getPort(), header.connectionID, lastPacketReceived);
+				if (header.shouldBeAcked == 1) {
+					sendACK(packet.getAddress(), packet.getPort(), header.connectionID, lastPacketReceived);
+				}
 				System.out.println("Bytes Received: " + totalBytesReceived + " Bytes to go: " + (header.fileSize - totalBytesReceived));
 				if(totalBytesReceived == header.fileSize) {
 					System.out.println("Packet has been received in Full.");
@@ -77,7 +80,8 @@ public class ReceiverThread extends Thread {
 		int id = byteBuf.getInt();
 		int fileSize = byteBuf.getInt();
 		int packetNumber = byteBuf.getInt();
-		return new PacketHeader(id, fileSize, packetNumber);
+		int shouldBeAcked = byteBuf.getInt();
+		return new PacketHeader(id, fileSize, packetNumber, shouldBeAcked);
 	}
 	
 	private void writePacketToFile(DatagramPacket packet) throws IOException {
