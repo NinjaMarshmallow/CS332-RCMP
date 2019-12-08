@@ -19,20 +19,18 @@ import java.util.Random;
 
 public class SenderThread extends Thread {
 	
-	private final static String ACK = "ACK";
 	private final int MTU = Main.MTU;
 	private final int HEADER_SIZE = Main.HEADER_SIZE;
 	private final static int TIMEOUT = 4000;
 	private DatagramSocket socket;
 	private int destinationPort;
 	private InetAddress destinationAddress;
-	private BufferedReader reader;
-	private byte[] payload;
 	private List<byte[]> payloads;
 	private int remainderBytesNumber = 0;
-	private long time;
 	private int fileSize;
 	private int connectionID;
+	private int ackGap;
+	private int gapCounter;
 	
 	public SenderThread(String destinationAddress, int destinationPort, String filename) throws SocketException, FileNotFoundException, IOException {
 		super();
@@ -43,6 +41,8 @@ public class SenderThread extends Thread {
 		remainderBytesNumber = readAllBytesIntoPayloadQueue(filename);
 		fileSize = (payloads.size() - 1) * MTU + remainderBytesNumber;
 		connectionID = new Random().nextInt((int)Math.pow(2, 16));
+		ackGap = 0;
+		gapCounter = 0;
 	}
 	
 	private void initializeSocket() throws SocketException {
@@ -80,6 +80,7 @@ public class SenderThread extends Thread {
 			packet.setLength(this.remainderBytesNumber + HEADER_SIZE);
 		}
 		socket.send(packet);
+		gapCounter++;
 		System.out.println("Sending Packet #" + packetNumber + " of size " + packet.getLength());
 		System.out.println("Packet contains: ");
 		displayPacket(packet);
@@ -89,9 +90,10 @@ public class SenderThread extends Thread {
 		byte[] ackBuffer = new byte[8]; // One byte per character
 		DatagramPacket ackPacket = createPacket(ackBuffer);
 		socket.receive(ackPacket);
-		ByteBuffer byteBuf = ByteBuffer.wrap(ackBuffer);
-		int connectID = byteBuf.getInt(4);
-		int lastPacketReceived = byteBuf.getInt(4);
+		int connectID = ByteBuffer.wrap(ackBuffer).getInt();
+		int lastPacketReceived = ByteBuffer.wrap(ackBuffer).getInt();
+		ackGap++;
+		gapCounter = 0;
 		System.out.println("Received ACK of Packet #" + lastPacketReceived + "on connection " + connectID);
 	}
 	
@@ -99,6 +101,7 @@ public class SenderThread extends Thread {
 		byte[] bytesConnectionID = ByteBuffer.allocate(4).putInt(connectionID).array();
 		byte[] bytesFileSize = ByteBuffer.allocate(4).putInt(fileSize).array();
 		byte[] bytesPacketNumber = ByteBuffer.allocate(4).putInt(packetNumber).array();
+		byte[] shouldBeAcked = ByteBuffer.allocate(1).putInt(ackGap == gapCounter ? 1 : 0).array();
 		return ByteBuffer.allocate(HEADER_SIZE).put(bytesConnectionID).put(bytesFileSize).put(bytesPacketNumber).array();
 	}
 	
