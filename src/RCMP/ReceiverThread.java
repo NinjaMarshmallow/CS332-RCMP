@@ -90,9 +90,7 @@ public class ReceiverThread extends Thread {
 	}
 	
 	private void writePacketToFile(DatagramPacket packet) throws IOException {
-		byte[] headerAndPayload = packet.getData();
-		byte[] justPayload = Arrays.copyOfRange(headerAndPayload, HEADER_SIZE, MTU + HEADER_SIZE);
-		stream.write(justPayload);
+		stream.write(packet.getData(), HEADER_SIZE, packet.getLength() - HEADER_SIZE);
 		totalBytesReceived += packet.getLength() - HEADER_SIZE;
 	}
 	
