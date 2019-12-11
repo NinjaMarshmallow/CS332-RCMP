@@ -3,18 +3,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.SocketException;
 
-//import java.io.File;
-//import java.net.DatagramSocket;
-//import java.net.DatagramPacket;
-//import java.net.InetAddress;
-//import java.net.SocketException;
-//import java.net.UnknownHostException;
-//import java.io.FileInputStream;
-//import java.io.InputStream;
-//import java.io.FileNotFoundException;
-//import java.io.IOException;
-
-
 public class Main {
 	
 	public final static int MTU = 1450;
@@ -52,6 +40,7 @@ public class Main {
 		}
 	}
 	
+	// Checks the flag for if initializing a sender or receiver
 	private static HostType getHostType(String[] args) {
 		for(int i = 0; i < args.length; i++) {
 			String arg = args[i];
@@ -76,8 +65,8 @@ public class Main {
 			main.startSender(args[1], args[2], args[3]);
 		} else {
 			System.out.println("Usage:");
-			System.out.println("To make a Sender: java Main -s receiverIPAddress receiverPort filename");
-			System.out.println("To make a Receiver: java Main -r receiverPort filename");
+			System.out.println("To make a Sender: java RCMP.Main -s receiverIPAddress receiverPort filename");
+			System.out.println("To make a Receiver: java RCMP.Main -r receiverPort filename");
 		}
 	}
 
