@@ -1,3 +1,11 @@
+/** Main.java is the control for SenderThread and ReceiverThread
+ *  
+ *  @author Jon Ellis, Jason Klaassen
+ *  For CS332 at Calvin University
+ *  
+ *  usage: java RCMP.Main -s receiverIPAddress receiverPort filename or
+ *  	   java RCMP.Main -r receiverPort filename
+ */
 package RCMP;
 import java.io.FileNotFoundException;
 import java.io.IOException;

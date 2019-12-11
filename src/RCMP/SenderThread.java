@@ -1,3 +1,11 @@
+/** SenderThread.java is a sender for the Reliable Calvin Messaging Protocol.
+ *  It reliably sends the given file to the given IP address and port
+ *  
+ *  @author Jon Ellis, Jason Klaassen
+ *  For CS332 at Calvin University
+ *  
+ *  usage: java RCMP.Main -s receiverIPAddress receiverPort filename
+ */
 package RCMP;
 
 import java.io.File;
